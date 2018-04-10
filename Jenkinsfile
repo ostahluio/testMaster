@@ -5,7 +5,8 @@ pipeline {
       agent any
       steps {
         git 'https://github.com/ostahluio/testMaster.git'
-        echo 'do something'
+        sh 'ant -buildfile /var/jenkins_home/workspace/ABS_Tools/frontend/build.xml dist'
+        archiveArtifacts 'frontend/dist/absfrontend.jar'
       }
     }
   }
