@@ -1,0 +1,24 @@
+module M1;
+export C;
+class C { }
+
+module M2;
+export *;
+interface I { }
+
+module M3;
+import * from M1;
+import * from M2;
+
+delta D;
+ uses M1;
+ adds import M2.I;
+ // modifiers follow normal scoping rules: M2.I needs to be imported to be
+ // accessible within M1, even within a delta.
+ modifies class M1.C adds M2.I { }
+
+productline PL;
+ features F;
+ delta D when F;
+
+product P(F);
