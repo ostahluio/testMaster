@@ -13,7 +13,7 @@ Docker, execute the following command:
 Then connect your browser to http://localhost:8080/.  It is not necessary to
 clone the repository or compile the toolchain to run the ABS collaboratory in this way.
 
-
+x
 Folders
 -------
 
