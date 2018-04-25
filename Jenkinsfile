@@ -8,9 +8,9 @@ pipeline {
     stage('Build') {
       agent any
       steps {
-        git 'https://github.com/ostahluio/testMaster.git'
-        sh 'ant -buildfile ./frontend/build.xml dist'
-        archiveArtifacts 'frontend/dist/absfrontend.jar'
+        //git 'https://github.com/ostahluio/testMaster.git'
+        //sh 'ant -buildfile ./frontend/build.xml dist'
+        //archiveArtifacts 'frontend/dist/absfrontend.jar'
       }
     }
 	stage('Test') {
