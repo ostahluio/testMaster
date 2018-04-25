@@ -13,5 +13,8 @@ pipeline {
         archiveArtifacts 'frontend/dist/absfrontend.jar'
       }
     }
+	stage('Test') {
+		sh 'docker run hello-world'
+	}
   }
 }
