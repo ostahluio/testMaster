@@ -34,13 +34,17 @@ pipeline {
 						sh 'docker stop controller_container'
 					}
 					finally {
-						sh 'sudo docker rm controller_container'
-					}
-					try {
-						sh 'sudo docker stop worker_container'
-					}
-					finally {
-						sh 'sudo docker rm worker_container'
+						try {
+							sh 'sudo docker rm controller_container'
+						}
+						finally {
+							try {
+								sh 'sudo docker stop worker_container'
+							}
+							finally {
+								sh 'sudo docker rm worker_container'
+							}
+						}
 					}
 				}
 			}
