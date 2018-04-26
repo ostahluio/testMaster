@@ -15,9 +15,9 @@ pipeline {
     //}
 	stage('Test') {
 		steps {
-			sh docker pull jacopomauro/abs_optimizer:latest
-			sh docker run -d -p 9001:9001 --name worker_container jacopomauro/abs_optimizer:latest
-			sh curl http://localhost:9001/health
+			sh 'docker pull jacopomauro/abs_optimizer:latest'
+			sh 'docker run -d -p 9001:9001 --name worker_container jacopomauro/abs_optimizer:latest'
+			sh 'curl http://localhost:9001/health'
 		}
 	}
   }
