@@ -1,0 +1,301 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Highcharts Example</title>
+
+    <link rel="stylesheet" href="static/jquery-ui-1.12.1.css">
+    <script type="text/javascript" src="static/jquery-1.11.3.js"></script>
+    <script type="text/javascript" src="static/jquery-ui-1.12.1.js"></script>
+
+    <script type="text/javascript" src="static/highcharts.js"></script>
+    <script type="text/javascript" src="static/modules/exporting.js"></script>
+
+
+  </head>
+
+	<body>
+    <div id="tabs">
+      <ul>
+      </ul>
+    </div>
+  </body>
+
+  <script type="text/javascript">
+
+
+
+/**
+ * In order to synchronize tooltips and crosshairs, override the
+ * built-in events with handlers defined on the parent element.
+ * https://stackoverflow.com/questions/36437297/highcharts-synchronized-charts-display-tooltip
+ */
+function my_override(container_id) {
+	$(container_id).bind('mousemove touchmove touchstart', function (e) {
+    var chart, point, i, event;
+
+    var charts = $(this).children('div');
+
+    for (i = 0; i < charts.length; i = i + 1) {
+        chart = $(charts[i]).highcharts();
+        if (!chart) continue;
+        // Find coordinates within the chart
+        event = chart.pointer.normalize(e.originalEvent); 
+
+        var points = [];
+        for (j = 0; j < chart.series.length; j = j + 1) {
+            serie = chart.series[j];
+            if (!serie.visible || serie.enableMouseTracking === false) continue;
+
+            point = serie.searchPoint(event, true);
+            // Get the hovered point
+            if (point) points.push(point); 
+        }
+
+        if (points.length) {
+            if (chart.tooltip.shared) {
+                chart.tooltip.refresh(points);
+            } else {
+                chart.tooltip.refresh(points[0]);
+            }
+            chart.xAxis[0].drawCrosshair(e, points[0]);
+        }
+    }
+	});
+}
+
+
+/**
+ * Override the reset function, we don't need to hide the tooltips and crosshairs.
+ */
+Highcharts.Pointer.prototype.reset = function() {
+  return undefined;
+};
+
+/**
+ * Synchronize zooming through the setExtremes event handler.
+ */
+function syncExtremes(e) {
+  var thisChart = this.chart;
+
+  if (e.trigger !== 'syncExtremes') { // Prevent feedback loop
+    Highcharts.each(Highcharts.charts, function(chart) {
+      if (chart !== thisChart) {
+        if (chart.xAxis[0].setExtremes) { // It is null while updating
+          chart.xAxis[0].setExtremes(e.min, e.max, undefined, false, {
+            trigger: 'syncExtremes'
+          });
+        }
+      }
+    });
+  }
+}
+
+
+
+function to_highchart_date(startdate, offset) {
+    return startdate + (offset * 60 * 1000);
+}
+
+function add_sync_plot(container_id,name,y_axis,data_list,real_data_list,unit_of_measure) {
+		var series = [];
+		series.push({
+				name: 'Sim',
+				type: 'line',
+				turboThreshold: 0,
+				tooltip: { valueSuffix: ' ' + unit_of_measure },
+				data: data_list.map( function(item,index) {
+		                         return {
+		                             x: to_highchart_date(0, index),
+		                             y: item
+		                         };
+		                     }).filter( function(item) {
+																				  return item.y >= 0;
+														 						})
+		});
+		if ( real_data_list.length > 0 ) {
+			series.push({
+					name: 'Real',
+					type: 'line',
+					turboThreshold: 0,
+					tooltip: { valueSuffix: ' ' + unit_of_measure },
+					data: real_data_list.map( function(item,index) {
+				                       return {
+				                           x: to_highchart_date(0, index),
+				                           y: item
+				                       };
+				                   }).filter( function(item) {
+																						return item.y >= 0;
+															 						})
+			})};
+
+		var new_container_id = container_id + '_sync_plot_' + name;
+		$("#" + container_id).append('<div id="' + new_container_id + '" style="min-width: 310px; min-height: 300px; height: 300px; margin: 0 auto"></div>');
+		
+		mychart = {
+            chart: {
+                marginLeft: 60, // Keep all charts left aligned
+                spacingTop: 40,
+                spacingBottom: 20,
+								zoomType: 'x'
+            },
+            title: {
+                text: name,
+                align: 'left',
+                margin: 0,
+                x: 30
+            },
+            credits: {
+                enabled: false
+            },
+            legend: {
+                enabled: false
+            },
+				    xAxis: {
+				        type: 'datetime',
+				        dateTimeLabelFormats: {
+				            month: '%e. %b',
+				            year: '%b'
+				        },
+				        title: {
+				            text: 'Time'
+				        },
+                crosshair: true,
+                events: {
+                    setExtremes: syncExtremes
+                }
+				    },
+            yAxis: {
+                title: {
+                    text: y_axis
+                }
+            },
+            tooltip: {
+                positioner: function () {
+                    return {
+                        x: this.chart.chartWidth - this.label.width, // right aligned
+                        y: 10 // align to title
+                    };
+                },
+                borderWidth: 0,
+                //backgroundColor: 'none',
+                pointFormat: '{series.name}: {point.y}<br/>',
+                headerFormat: '',
+                shadow: false,
+                //style: {
+                //    fontSize: '18px'
+                //},
+                valueDecimals: 0,
+								/*formatter: function () {
+										var s = '';
+								    $.each(this.points, function () {
+												if (this.y) {
+								        s += this.series.name + ': ' +
+								            this.y + '   '
+												}});
+
+								    return s;
+								},*/
+								shared: true
+            },
+            series: series
+        };
+		// show legend if real data is available
+		if ( real_data_list.length > 0 ) {
+			mychart['legend'] = {
+								layout: 'horizontal',
+								align: 'left',
+								x: 50,
+								verticalAlign: 'top',
+								y: 20,
+								floating: true,
+								backgroundColor: (Highcharts.theme && Highcharts.theme.legendBackgroundColor) || '#FFFFFF'
+						};
+		};
+		Highcharts.chart(new_container_id, mychart );
+		//my_override('#'+new_container_id);
+
+}
+
+
+function printInConsole(obj, str = ""){
+		var output = str;
+		for (property in obj) {
+    		output += property + ': ' + obj[property]+'; ';
+		}
+		console.log(output);
+}
+
+function sort_tabs(tabs){
+	tabs.tabs("refresh");
+	var ul = tabs.find("ul");
+	var tab_items = ul.children("li");
+	tab_items.sort( function(a,b) {
+		  var textA = $(a).text();
+		  var textB = $(b).text();
+			//console.log( textA);
+			if (textA < textB) return -1;
+		  if (textA > textB) return 1;
+
+		  return 0;
+		});
+	ul.append(tab_items);
+	tabs.tabs( { 'active': 0} );
+}
+
+function loadJSON(){
+		// get the data for all the components
+		$.getJSON("/o")
+				.done(function(comp_list) {
+						comp_list.forEach( function(item) {
+								$.when(
+										$.getJSON("/call/" + item + "/get_history"),
+										$.getJSON("/call/" + item + "/get_real_history")
+								).done(function(sim_result, real_result) {
+										var tabs = $("#tabs").tabs();
+										var ul = tabs.find("ul");
+										$('<li><a href="#' + item + '">' + sim_result[0]['result']['name'] + '</a></li>').appendTo(ul);
+										tabs.append('<div id="' + item + '"> </div>');
+										sort_tabs(tabs);
+									
+//										build_component_plot('#'+item, result['name'], result['result']['latencies'],result['result']['instances']);
+//										build_request_plot('#'+item, result['name'], result['result']['requests'],result['result']['pending'])
+
+										add_sync_plot(item, "Latency", "", sim_result[0]['result']['latencies'], real_result[0]['result']['latencies'], "ms");
+										add_sync_plot(item, "Instances", "", sim_result[0]['result']['instances'], real_result[0]['result']['instances'], "");
+										add_sync_plot(item, "Requests", "", sim_result[0]['result']['requests'], real_result[0]['result']['requests'], "");
+										//console.log(JSON.stringify(real_result[0]['result']['requests']));
+										//console.log(JSON.stringify(real_result[0]['result']['instances']));
+
+										add_sync_plot(item, "Pending", "", sim_result[0]['result']['pending'], [], "");
+
+										my_override('#'+ item);
+										
+										
+										//printInConsole(data,"step "); 
+								});
+						});
+				});
+}
+
+
+
+/*
+    $.getJSON("/o/Component1/measure_list")
+			.done(function(data) {
+		      var history = data['measure_list'];	
+					build_component_plot('comp1',history);
+		  })
+			.fail(function() {
+					$('#per-component').append('<p> JSON Query Error </p>');
+			}); */
+
+$(document).ready(function(){
+		loadJSON();
+		//tabs.tabs( { 'active': 0} )
+});
+  </script>
+
+
+
+</html>
